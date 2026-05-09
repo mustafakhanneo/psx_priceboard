@@ -255,20 +255,29 @@ with st.sidebar:
     # Stock selection
     st.markdown("### Select Stock")
 
-    # Try to fetch all tickers from psxdata
+# Try to fetch all tickers from psxdata
     all_tickers = {}
-
     try:
         import psxdata
-        tickers_df = psxdata.tickers()
-        if tickers_df is not None and len(tickers_df) > 0:
-            # psxdata returns columns: Symbol, Company, Sector, etc.
-            for _, row in tickers_df.iterrows():
-                symbol = str(row.get('Symbol', '')).strip().upper()
-                company = str(row.get('Company', '')).strip()
-                if symbol and company:
-                    all_tickers[symbol] = company
-            st.sidebar.success(f"Loaded {len(all_tickers)} PSX tickers!")
+        tickers_list = psxdata.tickers()
+        if tickers_list is not None and len(tickers_list) > 0:
+            # psxdata.tickers() returns a list of symbol strings
+            if isinstance(tickers_list, list):
+                for symbol in tickers_list:
+                    symbol = str(symbol).strip().upper()
+                    if symbol:
+                        all_tickers[symbol] = symbol  # Use symbol as name if no company data
+                st.sidebar.success(f"Loaded {len(all_tickers)} PSX tickers!")
+            elif isinstance(tickers_list, pd.DataFrame):
+                # If it returns a DataFrame in future versions
+                for _, row in tickers_list.iterrows():
+                    symbol = str(row.get('Symbol', '')).strip().upper()
+                    company = str(row.get('Company', symbol)).strip()
+                    if symbol:
+                        all_tickers[symbol] = company if company else symbol
+                st.sidebar.success(f"Loaded {len(all_tickers)} PSX tickers!")
+            else:
+                st.sidebar.warning("Unexpected tickers format. Using fallback list.")
         else:
             st.sidebar.warning("Could not fetch tickers from psxdata. Using fallback list.")
     except Exception as e:
@@ -309,14 +318,43 @@ with st.sidebar:
             'UBL': 'United Bank Limited'
         }
 
-    stock_option = st.selectbox(
-        "Choose a stock",
-        options=list(all_tickers.keys()),
-        format_func=lambda x: f"{x} - {all_tickers[x]}"
-    )
+    # Search/filter for tickers
+    ticker_search = st.text_input("Search ticker", "", placeholder="e.g. HBL, OGDC...").upper().strip()
+
+    if ticker_search and ticker_search in all_tickers:
+        stock_option = ticker_search
+        st.sidebar.success(f"Found: {ticker_search}")
+    elif ticker_search:
+        # Filter tickers that contain the search term
+        filtered = {k: v for k, v in all_tickers.items() if ticker_search in k}
+        if filtered:
+            stock_option = st.selectbox(
+                "Matching tickers",
+                options=list(filtered.keys()),
+                format_func=lambda x: f"{x} - {filtered[x]}"
+            )
+        else:
+            st.sidebar.error(f"No ticker found matching '{ticker_search}'")
+            stock_option = st.selectbox(
+                "Choose a stock",
+                options=list(all_tickers.keys()),
+                format_func=lambda x: f"{x} - {all_tickers[x]}"
+            )
+    else:
+        stock_option = st.selectbox(
+            "Choose a stock",
+            options=list(all_tickers.keys()),
+            format_func=lambda x: f"{x} - {all_tickers[x]}"
+        )
 
     custom_symbol = st.text_input("Or enter custom symbol", "")
     symbol = custom_symbol.upper() if custom_symbol else stock_option
+    
+    # Show ticker info
+    if symbol in all_tickers:
+        st.sidebar.info(f"Selected: **{symbol}** - {all_tickers[symbol]}")
+
+
 
     st.markdown("---")
 
