@@ -255,23 +255,64 @@ with st.sidebar:
     # Stock selection
     st.markdown("### Select Stock")
 
-    popular_stocks = {
-        'HBL': 'Habib Bank Limited',
-        'OGDC': 'Oil & Gas Development Company',
-        'ENGRO': 'Engro Corporation',
-        'LUCK': 'Lucky Cement',
-        'MCB': 'MCB Bank Limited',
-        'PPL': 'Pakistan Petroleum Limited',
-        'UNITY': 'Unity Foods',
-        'TRG': 'TRG Pakistan',
-        'SILK': 'Silk Bank Limited',
-        'KEL': 'K-Electric Limited'
-    }
+    # Try to fetch all tickers from psxdata
+    all_tickers = {}
+
+    try:
+        import psxdata
+        tickers_df = psxdata.tickers()
+        if tickers_df is not None and len(tickers_df) > 0:
+            # psxdata returns columns: Symbol, Company, Sector, etc.
+            for _, row in tickers_df.iterrows():
+                symbol = str(row.get('Symbol', '')).strip().upper()
+                company = str(row.get('Company', '')).strip()
+                if symbol and company:
+                    all_tickers[symbol] = company
+            st.sidebar.success(f"Loaded {len(all_tickers)} PSX tickers!")
+        else:
+            st.sidebar.warning("Could not fetch tickers from psxdata. Using fallback list.")
+    except Exception as e:
+        st.sidebar.warning(f"psxdata.tickers() failed: {e}. Using fallback list.")
+
+    # Fallback: hardcoded popular stocks if psxdata tickers not available
+    if not all_tickers:
+        all_tickers = {
+            'HBL': 'Habib Bank Limited',
+            'OGDC': 'Oil & Gas Development Company',
+            'ENGRO': 'Engro Corporation',
+            'LUCK': 'Lucky Cement',
+            'MCB': 'MCB Bank Limited',
+            'PPL': 'Pakistan Petroleum Limited',
+            'UNITY': 'Unity Foods',
+            'TRG': 'TRG Pakistan',
+            'SILK': 'Silk Bank Limited',
+            'KEL': 'K-Electric Limited',
+            'BAHL': 'Bank AL Habib Limited',
+            'BAFL': 'Bank Alfalah Limited',
+            'DGKC': 'D.G. Khan Cement',
+            'FCCL': 'Fauji Cement',
+            'FFBL': 'Fauji Fertilizer Bin Qasim',
+            'FFC': 'Fauji Fertilizer Company',
+            'HUBC': 'Hub Power Company',
+            'INDU': 'Indus Motor Company',
+            'KAPCO': 'Kot Addu Power Company',
+            'LCI': 'Lahore Cement',
+            'MARI': 'Mari Petroleum',
+            'MLCF': 'Maple Leaf Cement',
+            'NBP': 'National Bank of Pakistan',
+            'NCPL': 'Nishat Chunian Power',
+            'NML': 'Nishat Mills',
+            'POL': 'Pakistan Oilfields',
+            'PSO': 'Pakistan State Oil',
+            'SNGP': 'Sui Northern Gas Pipelines',
+            'SSGC': 'Sui Southern Gas Company',
+            'UBL': 'United Bank Limited'
+        }
 
     stock_option = st.selectbox(
         "Choose a stock",
-        options=list(popular_stocks.keys()),
-        format_func=lambda x: f"{x} - {popular_stocks[x]}"
+        options=list(all_tickers.keys()),
+        format_func=lambda x: f"{x} - {all_tickers[x]}"
     )
 
     custom_symbol = st.text_input("Or enter custom symbol", "")
@@ -283,7 +324,7 @@ with st.sidebar:
     st.markdown("### Date Range")
     col1, col2 = st.columns(2)
     with col1:
-        start_date = st.date_input("Start", date.today() - timedelta(days=1095))
+        start_date = st.date_input("Start", date.today() - timedelta(days=3650))  # Default to 10 years ago
     with col2:
         end_date = st.date_input("End", date.today())
 
